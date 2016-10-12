@@ -72,18 +72,16 @@ do
 				endif')
 	done
 	ssh -YC siwei@pdsf.nersc.gov "cd /global/homes/s/siwei/polarization/test20160707/ && ./combine.sh $file"
+	ssh -YC siwei@pdsf.nersc.gov "cd /global/homes/s/siwei/polarization/test20160707/ && root -b -q plot.C"
 	file=$(($file+1))
 done
 echo "Jobs are DONE at $(date)"
 fi
 
-
-
 if [ "$step" = "step1" ] || [ "$step" = "step2" ] || [ "$step" = "step3" ] || [ "$step" = "step4" ] || [ "$step" = "step5" ] || [ "$step" = "step6" ];then
 echo " Download results from PDSF at $(date) " 
-
 	rsync -au siwei@pdsf.nersc.gov:~/polresults/ ~/polresultspdsf/ 
-
 	root -b  -q lambdas.C 
 fi
+
 echo " Calculation is finished at $(date) "
