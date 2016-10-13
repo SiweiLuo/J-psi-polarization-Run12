@@ -23,21 +23,22 @@ void plot(){
 				chi2->GetMinimumBin(xx,yy,zz);
 				bestfit = (TH2F*)combinedfile->Get(Form("template_file%d_trg%d_pt%d_frame%d_x%d_y%d",file,trig,pt,frame,xx,yy));
 				truth = (TH2F*)combinedfile->Get(Form("theta_%d_phi_%d",xx-1,yy-1));
-				rawdata = (TH2F*)rootfile->Get(Form("rawdata_HT%d_pT%d_frame%d",trig,pt,frame));//marker add file
+				rawdata = (TH2F*)rootfile->Get(Form("rawdata_%d_HT%d_pT%d_frame%d",file,trig,pt,frame));//marker add file
 				eff = (TH2F*)rootfile->Get(Form("eff_2dhist_%d_%d_%d_%d",file,trig,pt,frame));	
 				
 				if(chi2==0x0 || bestfit==0x0 || truth==0x0 || rawdata==0x0 || eff==0x0) continue;
-				
+					
 				c1->cd(1);
-				rawdata->Draw("colz");	
+				truth->Draw("colz");
 				c1->cd(2);
 				eff->Draw("colz");
 				c1->cd(3);
 				chi2->Draw("colz");		
 				c1->cd(4);
-				truth->Draw("colz");
-				c1->cd(5);
 				bestfit->Draw("colz");
+				c1->cd(5);
+				rawdata->Draw("colz");	
+
 				c1->SaveAs(Form("~/polresults/20160707/pdf/trig%d_frame%d_pt%d.pdf",trig,frame,pt));
 			}
 		}
