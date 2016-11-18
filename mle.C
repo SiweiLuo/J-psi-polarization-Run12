@@ -59,12 +59,12 @@ void mle(int ifile = 0,int itrig = 0, int xsect = 11, int ysect = 11){
 	correcteddata(ifile);
 	for(int ipt=0;ipt<6;ipt++){
 		for(int iframe=0;iframe<2;iframe++){
-			chisquare(ifile,itrig,ipt,iframe,xsect,ysect);
+			maxlikelihood(ifile,itrig,ipt,iframe,xsect,ysect);
 		}
 	}
 }
 
-void chisquare(int ifile = 0,int itrig = 0,int ipt = 0,int iframe = 0,int xsect = 11,int ysect = 11){
+void maxlikelihood(int ifile = 0,int itrig = 0,int ipt = 0,int iframe = 0,int xsect = 11,int ysect = 11){
 	//	if(rawdata2D[ifile][itrig][ipt][iframe]->GetMean()!=rawdata2D[ifile][itrig][ipt][iframe]->GetMean() || eff2D[ifile][itrig][ipt][iframe][2]->GetMean()!=eff2D[ifile][itrig][ipt][iframe][2]->GetMean()) return;
 	TH2F* templates[100][100];
 	chi2histograms[ifile][itrig][ipt][iframe] = new TFile(Form("~/polresults/20160707/rootfiles/chi2histograms_%d/chi2histograms_%d_%d_%d_%d_%d_%d.root",ifile,ifile,itrig,ipt,iframe,xsect,ysect),"recreate");
