@@ -21,8 +21,10 @@
 #define NPHASE 2 
 #define NFRAME 2
 #define NREBIN 4
-#define XNBIN 10 // 40
-#define YNBIN 10 // 40
+//#define XNBIN 10 
+//#define YNBIN 10 
+#define XNBIN 40
+#define YNBIN 40
 #define CHIXBIN 100
 #define CHIYBIN 100
 
@@ -50,11 +52,11 @@ TFile* chi2histograms[NFILE][NTRIG][NPT][NFRAME];
 float lambda[2][2]; // theta, phi; initial, terminal;
 
 void mle(int ifile = 0,int itrig = 0, int xsect = 11, int ysect = 11){
-	histograms = new TFile("histograms20161102.root","read"); //10*10 bining
-	histograms_copy = new TFile("templates20161102.root","read"); //10*10 bining
+//	histograms = new TFile("histograms20161102.root","read"); //10*10 bining
+//	histograms_copy = new TFile("templates20161102.root","read"); //10*10 bining
 
-//	histograms = new TFile("histograms20161107.root","read"); //40*40 bining
-//	histograms_copy = new TFile("templates20161107.root","read"); //40*40 bining
+	histograms = new TFile("histograms20161107.root","read"); //40*40 bining
+	histograms_copy = new TFile("templates20161107.root","read"); //40*40 bining
 
 	correcteddata(ifile);
 	for(int ipt=0;ipt<6;ipt++){
@@ -94,6 +96,8 @@ void maxlikelihood(int ifile = 0,int itrig = 0,int ipt = 0,int iframe = 0,int xs
 			templates[xnbin-1][ynbin-1] = (TH2F*)histograms->Get(Form("theta_%d_phi_%d",xnbin-1,ynbin-1));
 			templates[xnbin-1][ynbin-1]->SetName(Form("template_%d_%d",xnbin-1,ynbin-1));
 			templates[xnbin-1][ynbin-1]->Sumw2();
+			templates[xnbin-1][ynbin-1]->RebinX(4);
+			templates[xnbin-1][ynbin-1]->RebinY(4);
 			templates[xnbin-1][ynbin-1]->Multiply(eff);
 			templates[xnbin-1][ynbin-1]->Scale(rawdata->Integral()/templates[xnbin-1][ynbin-1]->Integral());
 			for(int xbin=1;xbin<XNBIN+1;xbin++){
@@ -117,6 +121,7 @@ void maxlikelihood(int ifile = 0,int itrig = 0,int ipt = 0,int iframe = 0,int xs
 				minchi2->SetName(Form("template_file%d_trg%d_pt%d_frame%d_x%d_y%d",ifile,itrig,ipt,iframe,xx,yy));
 				minchi2->SetTitle(Form("#lambda_{#theta}=%.2f #lambda_{#phi}=%.2f, likelihood=%.2f",lambda1,lambda2,likelihood));
 				TRUTH = (TH2F*)histograms_copy->Get(Form("theta_%d_phi_%d",xx-1,yy-1));
+				TRUTH->Sumw2();
 			}
 		}
 	}
@@ -225,8 +230,6 @@ void correcteddata(int file=0){
 					eff2D[file][trig][pt][frame][2] = (TH2F*)eff2D[file][trig][pt][frame][0]->Clone();
 					eff2D[file][trig][pt][frame][2]->SetName(Form("eff_ratio_%d_%d_%d_%d",file,trig,pt,frame));
 					eff2D[file][trig][pt][frame][2]->Sumw2();
-										eff2D[file][trig][pt][frame][2]->RebinX(NREBIN);//10*10
-										eff2D[file][trig][pt][frame][2]->RebinY(NREBIN);//10*10
 
 					eff2D[file][trig][pt][frame][2]->Divide(eff2D[file][trig][pt][frame][1]);
 					//					eff2D[file][trig][pt][frame][2]->Draw("colz");
