@@ -28,7 +28,7 @@
 
 Int_t gfile,gtrig,gpt,gframe;
 
-Float_t z1[40/NREBIN],z2[40/NREBIN],errorz1[40/NREBIN],errorz2[40/NREBIN],x[40/NREBIN],y[40/NREBIN];
+//Float_t z1[40/NREBIN],z2[40/NREBIN],errorz1[40/NREBIN],errorz2[40/NREBIN],x[40/NREBIN],y[40/NREBIN];
 Int_t PtEdge[NPT+1] = {0,2,3,4,6,8,14};
 
 TString trigSet[NTRIG] = {"ht0","ht1","ht2"};
@@ -70,7 +70,7 @@ double fit2dphi[NFILE][NTRIG][NPT][NFRAME];
 double fit2dphi_err[NFILE][NTRIG][NPT][NFRAME];
 double fitparameters[NFILE][NTRIG][NPT][NFRAME][4];//theta , theta_err , phi , phi_err
 double ptsmearing[NTRIG][NPT][NFRAME][NPHASE],weight[NTRIG][NPT][NFRAME][NPHASE],nhitsfit[NTRIG][NPT][NFRAME][NPHASE],nsigma[NTRIG][NPT][NFRAME][NPHASE],dsmadc[NTRIG][NPT][NFRAME][NPHASE],beta[NTRIG][NPT][NFRAME][NPHASE],poe[NTRIG][NPT][NFRAME][NPHASE],pol[NTRIG][NPT][NFRAME][NPHASE];
-double systematic_error[NTRIG][NPT][NFRAME][NPHASE];
+double systematic_error[NTRIG][NPT][NFRAME][NPHASE+1]; // theta, phi, inv.
 
 Double_t matrix[4][4];
 Double_t covariant[NTRIG][NPT][NFRAME];
@@ -86,10 +86,6 @@ Int_t ierflg=0;
 Int_t fitflag[4][NPT][2][4];
 TH1F* fitdata[NTRIG][NPT][NFRAME][NPHASE];// theta , phi
 
-TGraphErrors* lambda_theta_hx;// marker write them as an array
-TGraphErrors* lambda_phi_hx; 
-TGraphErrors* lambda_theta_cs;
-TGraphErrors* lambda_phi_cs; 
 TGraphErrors* lambda_parameters[NTRIG][NFRAME][NPHASE+1];// theta , phi , invariant
 TGraphErrors* lambda_parameters_sys[NTRIG][NFRAME][NPHASE+1];// theta , phi , invariant
 
@@ -102,17 +98,166 @@ TH2F* chi2;
 TH2F* result_mean;
 TH2F* result_sigma;
 
+double lambda[2][2];
+
 void lambdas(){
 	gStyle->SetOptStat(0);
 	outputfile = new TFile("~/jpsi/test20160210_Barbara/outputfile.root","read");//marker can be removed after crosschecking	
+
 	int file=0; //marker for loop 
+	std::vector<double> sysvector_theta_hx,sysvector_theta_cs,sysvector_phi_hx,sysvector_phi_cs;
+
+	for(;file<1;file++){ //marker for files number
 	for(int trig=0;trig<NTRIG;trig++){
 		for(int pt=0;pt<NPT;pt++){
-			for(int frame=0;frame<NFRAME;frame++){
-				scan(file,trig,pt,frame);
-			}
-		}	
-		lambdaparameters(file,trig);
+				for(int frame=0;frame<NFRAME;frame++){
+					scan(file,trig,pt,frame);
+					for(int phase=0;phase<2;phase++){
+						systematic_error[trig][pt][frame][phase] = 0;				
+					}
+				}
+/*				
+				if(file>=1 && file<12){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);// revise the frame 
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==11){
+					ptsmearing[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					ptsmearing[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					ptsmearing[trig][pt][0][1] = getaverage(sysvector_phi_hx);// marker getmaximum()
+					ptsmearing[trig][pt][1][1] = getaverage(sysvector_phi_cs);// marker getmaximum()
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=12 && file<20){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==19){
+					weight[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					weight[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					weight[trig][pt][0][1] = getaverage(sysvector_phi_hx);
+					weight[trig][pt][1][1] = getaverage(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=20 && file<24){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==23){
+					nhitsfit[trig][pt][0][0] = getmaximum(sysvector_theta_hx);
+					nhitsfit[trig][pt][1][0] = getmaximum(sysvector_theta_cs);
+					nhitsfit[trig][pt][0][1] = getmaximum(sysvector_phi_hx);
+					nhitsfit[trig][pt][1][1] = getmaximum(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=24 && file<29){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==28){
+					nsigma[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					nsigma[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					nsigma[trig][pt][0][1] = getaverage(sysvector_phi_hx);
+					nsigma[trig][pt][1][1] = getaverage(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=29 && file<31){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==30){
+					dsmadc[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					dsmadc[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					dsmadc[trig][pt][0][1] = getaverage(sysvector_phi_hx);
+					dsmadc[trig][pt][1][1] = getaverage(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=31 && file<35){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==34){
+					beta[trig][pt][0][0] = getmaximum(sysvector_theta_hx);
+					beta[trig][pt][1][0] = getmaximum(sysvector_theta_cs);
+					beta[trig][pt][0][1] = getmaximum(sysvector_phi_hx);
+					beta[trig][pt][1][1] = getmaximum(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+				if(file==35){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+
+					poe[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					poe[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					poe[trig][pt][0][1] = getaverage(sysvector_phi_hx);
+					poe[trig][pt][1][1] = getaverage(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+
+				if(file>=36 && file<40){
+					sysvector_theta_hx.push_back(lambda_theta[file][trig][pt][0]-lambda_theta[0][trig][pt][0]);
+					sysvector_theta_cs.push_back(lambda_theta[file][trig][pt][1]-lambda_theta[0][trig][pt][1]);
+					sysvector_phi_hx.push_back(lambda_phi[file][trig][pt][0]-lambda_phi[0][trig][pt][0]);
+					sysvector_phi_cs.push_back(lambda_phi[file][trig][pt][1]-lambda_phi[0][trig][pt][1]);
+				}
+				if(file==39){
+					pol[trig][pt][0][0] = getaverage(sysvector_theta_hx);
+					pol[trig][pt][1][0] = getaverage(sysvector_theta_cs);
+					pol[trig][pt][0][1] = getaverage(sysvector_phi_hx);
+					pol[trig][pt][1][1] = getaverage(sysvector_phi_cs);
+					sysvector_theta_hx.clear();
+					sysvector_theta_cs.clear();
+					sysvector_phi_hx.clear();
+					sysvector_phi_cs.clear();
+				}
+				for(int phase=0;phase<2;phase++){
+//					systematic_error[trig][pt][frame][phase] = 0;
+//					systematic_error[trig][pt][frame][phase] = TMath::Sqrt(fabs(ptsmearing[trig][pt][frame][phase])*fabs(ptsmearing[trig][pt][frame][phase])+fabs(weight[trig][pt][frame][phase])*fabs(weight[trig][pt][frame][phase])+fabs(nhitsfit[trig][pt][frame][phase])*fabs(nhitsfit[trig][pt][frame][phase])+fabs(nsigma[trig][pt][frame][phase])*fabs(nsigma[trig][pt][frame][phase])+fabs(dsmadc[trig][pt][frame][phase])*fabs(dsmadc[trig][pt][frame][phase])+fabs(beta[trig][pt][frame][phase])*fabs(beta[trig][pt][frame][phase])+fabs(poe[trig][pt][frame][phase])*fabs(poe[trig][pt][frame][phase])+fabs(pol[trig][pt][frame][phase])*fabs(pol[trig][pt][frame][phase]));
+				}
+*/
+			}	
+		}
+	lambdaparameters(file,trig);
 	}
 }
 
@@ -120,7 +265,7 @@ void lambdas(){
 void scan(int file = 0, int trig = 0, int pt = 0, int frame = 0){
 	TFile* inputfile = new TFile(Form("~/polresultspdsf/20160707/rootcombined/lambda_file%d_trg%d_pt%d_frame%d.root",file,trig,pt,frame),"read");
 
-	TH2F* chi2 = (TH2F*)inputfile->Get(Form("chi2_%d_%d_%d_%d",file,trig,pt,frame));
+	chi2 = (TH2F*)inputfile->Get(Form("chi2_%d_%d_%d_%d",file,trig,pt,frame));
 
 	if(chi2==0x0 || chi2->GetMean()!=chi2->GetMean() || chi2->GetMean()==0 ){
 		lambda_theta[file][trig][pt][frame] = -100;
@@ -141,7 +286,7 @@ void scan(int file = 0, int trig = 0, int pt = 0, int frame = 0){
 
 	for(int i=1;i<CHIXBIN+1;i++){
 		for(int j=1;j<CHIYBIN+1;j++){
-			if(chi2->GetBinContent(i,j)<=minimum+1 && chi2->GetBinContent(i,j)>=minimum){
+			if(chi2->GetBinContent(i,j)<=minimum+0.5 && chi2->GetBinContent(i,j)>=minimum){
 				result_sigma->Fill(chi2->GetXaxis()->GetBinCenter(i),chi2->GetYaxis()->GetBinCenter(j),chi2->GetBinContent(i,j));
 				lambda_theta_error.push_back(chi2->GetXaxis()->GetBinCenter(i));
 				lambda_phi_error.push_back(chi2->GetYaxis()->GetBinCenter(j));
@@ -170,7 +315,8 @@ void lambdaparameters(int sys3,int trig){// plot and write lambda parameters
 		for(int frame=0;frame<NFRAME;frame++){ 
 			for(int phase=0;phase<NPHASE+1;phase++){
 				for(int pt=0;pt<NPT;pt++) {
-					x[pt] = (PtEdge[pt+1]+PtEdge[pt])/2.+0.2*trig;
+//					x[pt] = (PtEdge[pt+1]+PtEdge[pt])/2.+0.2*trig; // shift a little bit
+					x[pt] = (PtEdge[pt+1]+PtEdge[pt])/2.;
 					x_err[pt] = (PtEdge[pt+1]-PtEdge[pt])/2.;
 					theta[pt] = lambda_theta[file][trig][pt][frame];
 					thetaerr[pt] = lambda_theta_err[file][trig][pt][frame];
@@ -180,14 +326,17 @@ void lambdaparameters(int sys3,int trig){// plot and write lambda parameters
 					if(phase==0){
 						y[pt] = lambda_theta[file][trig][pt][frame];
 						y_err[pt] = lambda_theta_err[file][trig][pt][frame];
+//						y_sys[pt] = systematic_error[trig][pt][frame][phase];
 					}
 					if(phase==1){
 						y[pt] = lambda_phi[file][trig][pt][frame];
 						y_err[pt] = lambda_phi_err[file][trig][pt][frame];
+//						y_sys[pt] = systematic_error[trig][pt][frame][phase];
 					}
 					if(phase==2){//calculate lambda_invariant and its statistic error
 						y[pt] = (theta[pt]+3*phi[pt])/(1-phi[pt]);
 						y_err[pt] = TMath::Sqrt(theta[pt]*theta[pt]/((1-phi[pt])*(1-phi[pt]))+phi[pt]*phi[pt]*TMath::Power((3+theta[pt]/((1-phi[pt])*(1-phi[pt]))),2)+2*(3+theta[pt])/TMath::Power((1-phi[pt]),3)*covariant[trig][pt][frame]);
+//						y_sys[pt] = y[pt]-(lambda_theta[0][trig][pt][frame]+3*lambda_phi[0][trig][pt][frame])/(1-lambda_phi[0][trig][pt][frame]);
 						//							y_sys[pt] = y[pt]-(fitparameters[0][trig][pt][frame][0]+3*fitparameters[0][trig][pt][frame][2])/(1-fitparameters[0][trig][pt][frame][2]);
 						//cout<<"invariant ==================="<<y[pt]<<"trig"<<trig<<"   "<<"frame"<<frame<<endl;
 					}
@@ -203,10 +352,10 @@ void lambdaparameters(int sys3,int trig){// plot and write lambda parameters
 			}
 		}
 	}
-	drawlambdas(0,trig);
+	drawlambdas(sys3,trig,0);
 }
 
-void drawlambdas(int drawoptions = 0,int trig){
+void drawlambdas(int sys,int trig, int drawoptions = 0){
 	TCanvas* lambdacanvas; 
 	lambdas = new TFile(Form("~/polresultspdsf/20160707/lambdas/lambdas_trig%d.root",trig),"recreate");
 	lambdas->cd();
@@ -242,9 +391,10 @@ void drawlambdas(int drawoptions = 0,int trig){
 				legend->AddEntry(comparisonlambda[trig][phase+3*frame],Form("old %s",trigName[trig].Data()),"p");
 				legend->Draw("same");
 				lambda_parameters[trig][frame][phase]->Draw("psame");
+				lambda_parameters_sys[trig][frame][phase]->Draw("psame[]");
 			}
 		}
-		lambdacanvas->SaveAs("~/polresultspdsf/20160707/figures/lambdas_comparison_all.pdf");
+		lambdacanvas->SaveAs(Form("~/polresultspdsf/20160707/figures/sys_%d/lambdas_comparison_all.pdf",sys));
 		return;
 	}
 
@@ -283,11 +433,18 @@ void drawlambdas(int drawoptions = 0,int trig){
 			//				lambda_parameters_sys[trig][frame][phase]->Draw("samep[]");
 		}
 	}
-	lambdacanvas->SaveAs(Form("~/polresultspdsf/20160707/figures/lambdas_comparison_%d.pdf",trig));
+	lambdacanvas->SaveAs(Form("~/polresultspdsf/20160707/figures/sys_%d/lambdas_comparison_%d.pdf",sys,trig));
 }
 
 void plotaxissetting(int trig,int frame,int phase){
 	lambda_parameters[trig][frame][phase]->SetTitle(Form("%s in %s; J/#psi p_{T};#lambda_{#theta}",trigName[trig].Data(),frameName[frame].Data()));
+}
+
+double getaverage(std::vector<double> inputvector){
+	double sum = 0.;
+	for(int i=0;i<inputvector.size();i++) sum += inputvector[i];
+	sum = sum/inputvector.size();
+	return sum;
 }
 
 double getmaximum(std::vector<double> inputvector){
@@ -328,5 +485,57 @@ void compare_lambda(int trig,int frame, int phase){
 	//	if(phase!=2) 
 	comparisonlambda[trig][phase+3*frame]->Draw("samep");
 }
+
+void minimization(int ifile,int itrig,int ipt,int iframe){
+	//	TF2* fourier = new TF2("fourier","1+[0]*y*y+[1]*(1-y*y)cos(2*x)",-TMath::Pi(),TMath::Pi(),-1,1);
+	//	TH2F* chi2 = (TH2F*)inputfile->Get(Form("chi2_%d_%d_%d_%d",file,trig,pt,frame));	
+
+	float deltax = 0.02,deltay=2*TMath::Pi()/100;
+
+	float Hessian[2][2];
+	float invHessian[2][2];
+	float gradient[2];
+
+	lambda[0][0] = lambda[0][1] = lambda[1][0] = lambda[1][1] = 0.;
+
+	while(1){
+		int xbin,ybin;
+
+		cout<<"chi2 ="<<chi2<<endl;
+
+		xbin = chi2->GetXaxis()->FindBin(lambda[0][0]);
+		ybin = chi2->GetYaxis()->FindBin(lambda[1][0]);
+
+		gradient[0] = (chi2->GetBinContent(xbin+1,ybin)-chi2->GetBinContent(xbin-1,ybin))/(2*deltax);
+		gradient[1] = (chi2->GetBinContent(xbin,ybin+1)-chi2->GetBinContent(xbin,ybin-1))/(2*deltay);
+
+		Hessian[0][0] = (chi2->GetBinContent(xbin+1,ybin)-2*chi2->GetBinContent(xbin,ybin)+chi2->GetBinContent(xbin-1,ybin))/(deltax*deltax);
+		Hessian[1][1] = (chi2->GetBinContent(xbin,ybin+1)-2*chi2->GetBinContent(xbin,ybin)+chi2->GetBinContent(xbin,ybin-1))/(deltay*deltay);
+		Hessian[0][1] = Hessian[1][0] = (chi2->GetBinContent(xbin+1,ybin+1) + chi2->GetBinContent(xbin,ybin) - chi2->GetBinContent(xbin+1,ybin) - chi2->GetBinContent(xbin,ybin+1))/(deltax*deltay);
+
+		invHessian[0][0] = Hessian[1][1]/(Hessian[0][0]*Hessian[1][1] - Hessian[0][1]*Hessian[1][0]);
+		invHessian[0][1] = -1*Hessian[0][1]/(Hessian[0][0]*Hessian[1][1] - Hessian[0][1]*Hessian[1][0]);
+		invHessian[1][0] = -1*Hessian[1][0]/(Hessian[0][0]*Hessian[1][1] - Hessian[0][1]*Hessian[1][0]);
+		invHessian[1][1] = Hessian[0][0]/(Hessian[0][0]*Hessian[1][1] - Hessian[0][1]*Hessian[1][0]);
+		//		cout<<"invHessian[0][0] = "<<invHessian[0][0]<<"lambda[0][1] = "<<invHessian[0][1]<<"lambda[1][0]"<<invHessian[1][0]<<"lambda[1][1] = "<<invHessian[1][1]<<endl;
+
+		lambda[0][1] = lambda[0][0] - (invHessian[0][0]*gradient[0]+invHessian[0][1]*gradient[1]);
+		lambda[1][1] = lambda[1][0] - (invHessian[1][0]*gradient[0]+invHessian[1][1]*gradient[1]);
+
+		//		cout<<"lambda[0][0] = "<<lambda[0][0]<<"lambda[0][1] = "<<lambda[0][1]<<"lambda[1][0]"<<lambda[1][0]<<"lambda[1][1] = "<<lambda[1][1]<<endl;
+		//		cout<<"min x bin = "<< chi2->GetXaxis()->FindBin(lambda[0][0])<<"min y bin ="<<chi2->GetYaxis()->FindBin(lambda[1][0])<<endl;
+		if(chi2->GetXaxis()->FindBin(lambda[0][0])==chi2->GetXaxis()->FindBin(lambda[0][1]) && chi2->GetYaxis()->FindBin(lambda[1][0])==chi2->GetYaxis()->FindBin(lambda[1][1])) {
+			cout<<"lambda[0][1] = "<<lambda[0][1]<<"lambda[1][1] = "<<lambda[1][1]<<endl;
+			//		cout<<"min x bin = "<< chi2->GetXaxis()->FindBin(lambda[0][0])<<"min y bin ="<<chi2->GetYaxis()->FindBin(lambda[1][0])<<endl;
+			break;
+		}
+		else{
+			lambda[0][0] = lambda[0][1];
+			lambda[1][0] = lambda[1][1];
+		}
+	}
+}
+
+
 
 
